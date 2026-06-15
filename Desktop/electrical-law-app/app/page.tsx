@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
 const QUICK_QUESTIONS = [
-  "單相 220V 迴路的導線截面積最小需幾 mm²？",
-  "緊急出口指示燈的安裝高度規定？",
-  "變壓器室的防火區劃要求？",
-  "屋內配線的接地規定為何？",
-  "分路保護器的額定電流如何選定？",
-  "特低壓電路的電壓範圍規定？",
+  "PVC管填充率如何計算？",
+  "電壓降計算公式？",
+  "低壓配電盤設計原則？",
+  "消防泵浦供電規範？",
+  "ATS切換方式有哪些？",
+  "接地電阻標準值是多少？",
 ];
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -184,7 +184,7 @@ export default function Page() {
               color: tab === t ? "#F5C518" : "#475569", cursor: "pointer",
               fontSize: "11px", fontWeight: tab === t ? 700 : 400, letterSpacing: "1px",
             }}>
-              {t === "docs" ? "📁 法規文件" : "⚡ 常見問題"}
+              {t === "docs" ? "📁 工程知識庫" : "⚡ 常見問題"}
             </button>
           ))}
         </div>
@@ -216,8 +216,8 @@ export default function Page() {
 
               {docs.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "24px 8px", color: "#334155", fontSize: "11px", lineHeight: "1.8" }}>
-                  尚未上傳任何法規<br />
-                  <span style={{ color: "#1E3A5F" }}>上傳後 AI 將依據<br />你的文件版本回答</span>
+                  尚未上傳任何工程文件<br />
+                  <span style={{ color: "#1E3A5F" }}>上傳後 AI 將依據<br />你的工程文件回答</span>
                 </div>
               ) : (
                 docs.map(doc => (
@@ -242,10 +242,15 @@ export default function Page() {
               )}
 
               <div style={{ marginTop: "12px", padding: "10px", background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "6px", fontSize: "10px", color: "#475569", lineHeight: "1.8" }}>
-                💡 <strong style={{ color: "#64748B" }}>取得官方 PDF：</strong><br />
-                前往 <span style={{ color: "#7DD3FC" }}>law.moj.gov.tw</span><br />
-                搜尋法規 → 下載 PDF<br />
-                法規修正後重新上傳即可
+                💡 <strong style={{ color: "#64748B" }}>支援文件類型：</strong><br />
+  • 電氣法規 PDF<br />
+  • 建築技術規則<br />
+  • 消防法規文件<br />
+  • 設計規範書<br />
+  • 設備型錄與手冊<br />
+  • 業主技術規範<br />
+            <br />
+                  上傳後 AI 將依據文件內容回答問題與分析資料
               </div>
             </>
           )}
@@ -270,7 +275,7 @@ export default function Page() {
           <div style={{ padding: "10px 12px", borderTop: "1px solid #1E3A5F", background: "#0A1520" }}>
             <div style={{ fontSize: "11px", color: "#4ade80", display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-              已載入 {docs.length} 份法規文件
+              已載入 {docs.length} 份工程文件
             </div>
           </div>
         )}
@@ -350,7 +355,7 @@ export default function Page() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder="輸入法規問題⋯"
+              placeholder="請輸入問題⋯"
               rows={1}
               style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#E2E8F0", fontSize: "14px", resize: "none", lineHeight: "1.5", maxHeight: "120px", overflow: "auto", fontFamily: "inherit" }}
             />
