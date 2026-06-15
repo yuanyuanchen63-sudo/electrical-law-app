@@ -204,7 +204,7 @@ export default function Page() {
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                 }}
               >
-                {extracting ? "⏳ 解析中..." : "＋ 上傳法規 PDF"}
+                {extracting ? "⏳ 解析中..." : "＋ 上傳工程文件"}
               </button>
               <input ref={fileInputRef} type="file" accept=".pdf" multiple onChange={handleUpload} style={{ display: "none" }} />
 
@@ -284,9 +284,9 @@ export default function Page() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: "20px", padding: "2px 4px", flexShrink: 0 }}>☰</button>
           <div style={{ width: "30px", height: "30px", background: "#F5C518", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", flexShrink: 0 }}>⚡</div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: "14px", color: "#E2E8F0", whiteSpace: "nowrap" }}>電氣法規 AI 助理</div>
+            <div style={{ fontWeight: 700, fontSize: "14px", color: "#E2E8F0", whiteSpace: "nowrap" }}>機電智庫 AI</div>
             <div style={{ fontSize: "10px", color: docs.length > 0 ? "#4ade80" : "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {docs.length > 0 ? `依據 ${docs.length} 份上傳文件` : "AI 知識模式・上傳 PDF 切換文件模式"}
+              {docs.length > 0 ? `依據 ${docs.length} 份上傳文件` : "機電法規 × 工程知識 × AI 智慧查詢"}
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}>
@@ -300,7 +300,7 @@ export default function Page() {
           {messages.length === 0 && (
             <div style={{ margin: "auto", textAlign: "center", maxWidth: "340px", opacity: 0.45, padding: "0 16px" }}>
               <div style={{ fontSize: "44px", marginBottom: "12px" }}>⚡</div>
-              <div style={{ fontSize: "15px", color: "#94A3B8", marginBottom: "8px" }}>詢問任何電氣法規問題</div>
+              <div style={{ fontSize: "15px", color: "#94A3B8", marginBottom: "8px" }}>詢問任何機電智庫問題</div>
               <div style={{ fontSize: "11px", color: "#475569", lineHeight: "1.7" }}>
                 點左上角 ☰ 開啟選單<br />
                 可上傳 PDF 或選擇常見問題
