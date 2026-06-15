@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   description: "整合機電設計、電氣法規、建築技術規則、消防法規與工程知識的智慧查詢平台",
   
   icons: {
-    icon: "/icon.png",
+    icon: "/icon-512.png",
     shortcut: "/icon.png",
-    apple: "/icon.png",
+    apple: "/apple-icon.png",
   },
 };
 
