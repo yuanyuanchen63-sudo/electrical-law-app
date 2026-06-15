@@ -145,10 +145,13 @@ setDocs(prev => [
     url: fileUrl,
   },
 ]);
-      } catch {
-        setExtractError(`無法解析 ${file.name}，請使用文字版 PDF。`);
-      }
-    }
+} catch (err: any) {
+  console.error(err);
+
+  setExtractError(
+    `${file.name}：${err?.message || JSON.stringify(err)}`
+  );
+}
     setExtracting(false);
     e.target.value = "";
   };
