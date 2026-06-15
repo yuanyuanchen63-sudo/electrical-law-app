@@ -96,62 +96,68 @@ export default function Page() {
   }, [messages, loading]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setExtracting(true);
-    setExtractError("");
-    for (const file of files) {
-      try {
-        const text = await extractPdfText(file);
-        const date = new Date().toLocaleDateString("zh-TW");
-        const filePath = `${Date.now()}-${file.name}`;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
 
-const { error: uploadError } = await supabase.storage
-  .from("documents")
-  .upload(filePath, file, {
-    cacheControl: "3600",
-    upsert: true,
-  });
+  setExtracting(true);
+  setExtractError("");
 
-if (uploadError) {
-  throw uploadError;
-}
+  for (const file of files) {
+    try {
+      const text = await extractPdfText(file);
+      const date = new Date().toLocaleDateString("zh-TW");
+      const filePath = `${Date.now()}-${file.name}`;
 
-const { data: publicUrlData } = supabase.storage
-  .from("documents")
-  .getPublicUrl(filePath);
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
 
-const fileUrl = publicUrlData.publicUrl;
+      if (uploadError) {
+        throw uploadError;
+      }
 
-const { error: dbError } = await supabase
-  .from("documents")
-  .insert({
-    file_name: file.name,
-    file_url: fileUrl,
-    text_content: text,
-  });
+      const { data: publicUrlData } = supabase.storage
+        .from("documents")
+        .getPublicUrl(filePath);
 
-if (dbError) {
-  throw dbError;
-}
+      const fileUrl = publicUrlData.publicUrl;
 
-setDocs(prev => [
-  ...prev.filter(d => d.name !== file.name),
-  {
-    name: file.name,
-    text,
-    date,
-    size: (file.size / 1024).toFixed(0),
-    url: fileUrl,
-  },
-]);
-} catch (err: any) {
-  console.error(err);
+      const { error: dbError } = await supabase
+        .from("documents")
+        .insert({
+          file_name: file.name,
+          file_url: fileUrl,
+          text_content: text,
+        });
 
-  setExtractError(
-    `${file.name}：${err?.message || JSON.stringify(err)}`
-  );
-}
+      if (dbError) {
+        throw dbError;
+      }
+
+      setDocs(prev => [
+        ...prev.filter(d => d.name !== file.name),
+        {
+          name: file.name,
+          text,
+          date,
+          size: (file.size / 1024).toFixed(0),
+          url: fileUrl,
+        },
+      ]);
+    } catch (err: any) {
+      console.error(err);
+      setExtractError(
+        `${file.name}：${err?.message || JSON.stringify(err)}`
+      );
+    }
+  }
+
+  setExtracting(false);
+  e.target.value = "";
+};
     setExtracting(false);
     e.target.value = "";
   };
