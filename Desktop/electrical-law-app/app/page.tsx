@@ -158,9 +158,6 @@ export default function Page() {
   setExtracting(false);
   e.target.value = "";
 };
-    setExtracting(false);
-    e.target.value = "";
-  };
 
   const sendMessage = useCallback(async (text?: string) => {
     const userText = text || input.trim();
