@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-
+import { supabase } from "@/lib/supabase";
 const QUICK_QUESTIONS = [
   "PVC管填充率如何計算？",
   "電壓降計算公式？",
@@ -12,7 +12,13 @@ const QUICK_QUESTIONS = [
 ];
 
 type Message = { role: "user" | "assistant"; content: string };
-type Doc = { name: string; text: string; date: string; size: string };
+type Doc = { 
+  name: string; 
+  text: string; 
+  date: string; 
+  size: string;
+  url?: string;
+};
 
 async function extractPdfText(file: File, maxChars = 15000): Promise<string> {
   const script = await new Promise<void>((res, rej) => {
@@ -98,10 +104,47 @@ export default function Page() {
       try {
         const text = await extractPdfText(file);
         const date = new Date().toLocaleDateString("zh-TW");
-        setDocs(prev => [
-          ...prev.filter(d => d.name !== file.name),
-          { name: file.name, text, date, size: (file.size / 1024).toFixed(0) },
-        ]);
+        const filePath = `${Date.now()}-${file.name}`;
+
+const { error: uploadError } = await supabase.storage
+  .from("documents")
+  .upload(filePath, file, {
+    cacheControl: "3600",
+    upsert: true,
+  });
+
+if (uploadError) {
+  throw uploadError;
+}
+
+const { data: publicUrlData } = supabase.storage
+  .from("documents")
+  .getPublicUrl(filePath);
+
+const fileUrl = publicUrlData.publicUrl;
+
+const { error: dbError } = await supabase
+  .from("documents")
+  .insert({
+    file_name: file.name,
+    file_url: fileUrl,
+    text_content: text,
+  });
+
+if (dbError) {
+  throw dbError;
+}
+
+setDocs(prev => [
+  ...prev.filter(d => d.name !== file.name),
+  {
+    name: file.name,
+    text,
+    date,
+    size: (file.size / 1024).toFixed(0),
+    url: fileUrl,
+  },
+]);
       } catch {
         setExtractError(`無法解析 ${file.name}，請使用文字版 PDF。`);
       }
