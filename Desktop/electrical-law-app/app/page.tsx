@@ -256,11 +256,15 @@ const filePath = safeName;
       <div style={{
         position: isMobile ? "fixed" : "relative",
         left: 0, top: 0, bottom: 0, zIndex: 20,
-        width: "260px",
-        transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-        transition: "transform 0.3s",
-        background: "#0A1520", borderRight: "1px solid #1E3A5F",
-        display: "flex", flexDirection: "column",
+  width: sidebarOpen ? "260px" : "0px",
+  minWidth: sidebarOpen ? "260px" : "0px",
+  overflow: "hidden",
+  transform: "translateX(0)",
+  transition: "width 0.3s, min-width 0.3s",
+  background: "#0A1520",
+  borderRight: sidebarOpen ? "1px solid #1E3A5F" : "none",
+  display: "flex",
+  flexDirection: "column",
       }}>
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid #1E3A5F", flexShrink: 0 }}>
