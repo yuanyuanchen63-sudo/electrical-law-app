@@ -134,6 +134,11 @@ useEffect(() => {
 
   for (const file of files) {
     try {
+      if (docs.some(d => d.name === file.name)) {
+      alert("文件已存在");
+      continue;
+    }
+      
       const text = await extractPdfText(file);
       const date = new Date().toLocaleDateString("zh-TW");
       
