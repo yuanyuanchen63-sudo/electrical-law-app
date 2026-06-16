@@ -171,7 +171,8 @@ const filePath = safeName;
           file_name: file.name,
           file_url: fileUrl,
           text_content: text,
-        });
+        })
+        
         .select("id")
         .single();
 
