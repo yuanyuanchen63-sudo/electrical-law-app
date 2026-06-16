@@ -91,6 +91,34 @@ export default function Page() {
     if (window.innerWidth >= 768) setSidebarOpen(true);
   }, []);
 
+  // 開啟網站時，自動從 Supabase 載入已儲存文件
+useEffect(() => {
+  const loadDocuments = async () => {
+    const { data, error } = await supabase
+      .from("documents")
+      .select("file_name, file_url, text_content, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("載入文件失敗：", error);
+      return;
+    }
+
+    const loadedDocs: Doc[] = (data || []).map((item: any) => ({
+      name: item.file_name,
+      text: item.text_content || "",
+      date: item.created_at
+        ? new Date(item.created_at).toLocaleDateString("zh-TW")
+        : "",
+      size: "已儲存",
+      url: item.file_url,
+    }));
+
+    setDocs(loadedDocs);
+  };
+
+  loadDocuments();
+}, []);
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
