@@ -13,6 +13,7 @@ const QUICK_QUESTIONS = [
 
 type Message = { role: "user" | "assistant"; content: string };
 type Doc = { 
+  id?: string;
   name: string; 
   text: string; 
   date: string; 
@@ -96,7 +97,7 @@ useEffect(() => {
   const loadDocuments = async () => {
     const { data, error } = await supabase
       .from("documents")
-      .select("file_name, file_url, text_content, created_at")
+      .select("id, file_name, file_url, text_content, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -105,6 +106,7 @@ useEffect(() => {
     }
 
     const loadedDocs: Doc[] = (data || []).map((item: any) => ({
+      id: item.id,
       name: item.file_name,
       text: item.text_content || "",
       date: item.created_at
@@ -163,13 +165,15 @@ const filePath = safeName;
 
       const fileUrl = publicUrlData.publicUrl;
 
-      const { error: dbError } = await supabase
+      const { data: insertedData, error: dbError } = await supabase
         .from("documents")
         .insert({
           file_name: file.name,
           file_url: fileUrl,
           text_content: text,
         });
+        .select("id")
+        .single();
 
       if (dbError) {
         throw dbError;
@@ -178,6 +182,7 @@ const filePath = safeName;
       setDocs(prev => [
         ...prev.filter(d => d.name !== file.name),
         {
+          id: insertedData?.id,
           name: file.name,
           text,
           date,
@@ -320,8 +325,37 @@ const filePath = safeName;
                       <div style={{ fontSize: "11px", color: "#7DD3FC", fontWeight: 600, lineHeight: "1.4", flex: 1 }}>
                         📄 {doc.name.replace(".pdf", "")}
                       </div>
-                      <button onClick={() => setDocs(d => d.filter(x => x.name !== doc.name))}
-                        style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: "14px", padding: "0 2px" }}>✕</button>
+                      <button
+  onClick={async () => {
+    if (!doc.id) {
+      setDocs(d => d.filter(x => x.name !== doc.name));
+      return;
+    }
+
+    const { error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", doc.id);
+
+    if (error) {
+      console.error("刪除文件失敗：", error);
+      alert("刪除失敗，請稍後再試");
+      return;
+    }
+
+    setDocs(d => d.filter(x => x.id !== doc.id));
+  }}
+  style={{
+    background: "none",
+    border: "none",
+    color: "#475569",
+    cursor: "pointer",
+    fontSize: "14px",
+    padding: "0 2px",
+  }}
+>
+  ✕
+</button>
                     </div>
                     <div style={{ marginTop: "6px", display: "flex", gap: "8px", fontSize: "10px", color: "#475569" }}>
                       <span>📅 {doc.date}</span>
