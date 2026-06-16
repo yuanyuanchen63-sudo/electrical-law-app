@@ -106,7 +106,17 @@ export default function Page() {
     try {
       const text = await extractPdfText(file);
       const date = new Date().toLocaleDateString("zh-TW");
-      const filePath = `${Date.now()}-${file.name}`;
+      
+      const ext = file.name.split(".").pop() || "pdf";
+
+const safeName =
+  Date.now() +
+  "-" +
+  Math.random().toString(36).substring(2, 8) +
+  "." +
+  ext;
+
+const filePath = safeName;
 
       const { error: uploadError } = await supabase.storage
         .from("documents")
