@@ -604,14 +604,14 @@ export default function Page() {
       }}>
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid #1E3A5F", flexShrink: 0 }}>
-          {(["docs", "quick", "vdrop"] as const).map(t => (
+          {(["docs", "quick"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               flex: 1, padding: "10px 0", background: tab === t ? "#0D1B2A" : "transparent",
               border: "none", borderBottom: tab === t ? "2px solid #F5C518" : "2px solid transparent",
               color: tab === t ? "#F5C518" : "#475569", cursor: "pointer",
               fontSize: "10px", fontWeight: tab === t ? 700 : 400, letterSpacing: "0.5px",
             }}>
-              {t === "docs" ? "📁 法規文件" : t === "quick" ? "⚡ 常見問題" : "🔌 電壓降"}
+              {t === "docs" ? "📁 法規文件" : "⚡ 常見問題"}
             </button>
           ))}
         </div>
