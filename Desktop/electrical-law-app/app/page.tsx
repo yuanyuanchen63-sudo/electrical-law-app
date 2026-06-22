@@ -93,7 +93,6 @@ export default function Page() {
   const [vPF, setVPF] = useState(0.9);
   const [vWire, setVWire] = useState("PVC");
   const [vMM, setVMM] = useState(2);
-  const [vWireCount, setVWireCount] = useState("1");
   const [vLimit, setVLimit] = useState(3);
   const [vR, setVR] = useState(5.657);
   const [vX, setVX] = useState(0.119);
@@ -166,31 +165,13 @@ export default function Page() {
   }, [input, loading, messages, docs]);
 
   // 導線阻抗資料庫（依據計算書 PVC/FR/XLPE）
-  const resistanceTable: Record<number, {R: number; X: number}> = {
-    2: { R: 5.6570, X: 0.1190 },
-    5.5: { R: 3.2400, X: 0.1150 },
-    8: { R: 2.2500, X: 0.1040 },
-    14: { R: 1.2600, X: 0.0973 },
-    22: { R: 0.8010, X: 0.0965 },
-    30: { R: 0.6060, X: 0.0940 },
-    38: { R: 0.4740, X: 0.0914 },
-    50: { R: 0.3680, X: 0.0913 },
-    60: { R: 0.2950, X: 0.0912 },
-    80: { R: 0.2230, X: 0.0910 },
-    100: { R: 0.1750, X: 0.0909 },
-    125: { R: 0.1400, X: 0.0895 },
-    150: { R: 0.1150, X: 0.0887 },
-    200: { R: 0.0902, X: 0.0878 },
-    250: { R: 0.0701, X: 0.0875 },
-  };
-
   const wireDB: Record<string, Record<number, {R: number; X: number}>> = {
-    PVC: resistanceTable,
-    FR: resistanceTable,
-    XLPE: resistanceTable,
+    PVC: {2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.0733,X:0.0838}},
+    FR:  {2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.0733,X:0.0838}},
+    XLPE:{2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.03505,X:0.04375}},
   };
 
-  const wireMMList = [2,5.5,8,14,22,30,38,50,60,80,100,125,150,200,250];
+  const wireMMList = [2,3.5,5.5,8,14,22,30,38,50,60,80,100,150,200,250];
 
   const getWireRX = (wire: string, mm: number) => {
     if(wire === "custom") return {R: vR, X: vX};
@@ -206,11 +187,6 @@ export default function Page() {
     // 允許空白、小數點與任意小數位；例如 0.5、1.5、1.234、155.75
     // 僅限制格式為「非負數」，不限制小數點後位數。
     if (/^\d*(\.\d*)?$/.test(value)) setter(value);
-  };
-
-  const handlePositiveIntegerInput = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
-    // 線徑條數／並聯組數：允許暫時空白，輸入完成後計算時至少視為 1。
-    if (/^\d*$/.test(value)) setter(value);
   };
 
   const calcLoad = () => {
@@ -239,13 +215,10 @@ export default function Page() {
   };
 
   const calcVD = () => {
-    const base = getWireRX(vWire, vMM);
+    const {R, X} = getWireRX(vWire, vMM);
     const load = calcLoad();
     const current = calcCurrent();
     const length = toSafeNumber(vLength);
-    const wireCount = Math.max(1, Math.floor(toSafeNumber(vWireCount)) || 1);
-    const R = base.R / wireCount;
-    const X = base.X / wireCount;
     const safePF = load.pf;
     const sinPF = Math.sqrt(Math.max(0, 1 - safePF * safePF));
     const Z = R * safePF + X * sinPF;
@@ -254,7 +227,7 @@ export default function Page() {
     else if(vPhase === "1p3w" || vPhase === "3p4w") VD = length/1000 * current * Z;
     else VD = Math.sqrt(3) * length/1000 * current * Z;
     const pct = VD / vVolt * 100;
-    return { Z, VD, pct, vEnd: vVolt - VD, R, X, baseR: base.R, baseX: base.X, wireCount, length, sinPF, current, load };
+    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF, current, load, length };
   };
 
   const vResult = calcVD();
@@ -464,11 +437,6 @@ export default function Page() {
                       {wireMMList.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </label>
-                  <label>
-                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>線徑條數／並聯組數</div>
-                    <input type="text" inputMode="numeric" value={vWireCount} onChange={e => handlePositiveIntegerInput(e.target.value, setVWireCount)}
-                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
-                  </label>
                 </div>
 
                 {vWire === "custom" && (
@@ -507,10 +475,7 @@ export default function Page() {
                 {[
                   { label: "估算電流 I", val: `${vResult.current.toFixed(1)} A` },
                   { label: "功率因數 PF", val: `${vResult.load.pf.toFixed(2)}` },
-                  { label: "有效電阻 R", val: `${vResult.R.toFixed(6)} Ω/km` },
-                  { label: "有效電抗 X", val: `${vResult.X.toFixed(6)} Ω/km` },
-                  { label: "計算用阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
-                  { label: "線徑條數", val: `${vResult.wireCount} 條 / 組` },
+                  { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
                   { label: "電壓降 VD", val: `${vResult.VD.toFixed(9)} V` },
                   { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
                   { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
@@ -553,7 +518,6 @@ export default function Page() {
                 lineHeight: "1.9",
               }}>
                 <div style={{ color: "#F5C518", fontWeight: 800, marginBottom: "8px" }}>公式追蹤</div>
-                <div style={{ fontFamily: "monospace", color: "#94A3B8" }}>條數 = {vResult.wireCount}；有效 R = {vResult.baseR} ÷ {vResult.wireCount}，有效 X = {vResult.baseX} ÷ {vResult.wireCount}</div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
                 </div>
@@ -561,13 +525,13 @@ export default function Page() {
                   Z = R×cosθ + X×sinθ
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = {vResult.R.toFixed(6)} × {vResult.load.pf.toFixed(2)} + {vResult.X.toFixed(6)} × {vResult.sinPF.toFixed(4)}
+                  Z = {vResult.R} × {vResult.load.pf.toFixed(2)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
                 </div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   Z = {vResult.Z.toFixed(6)} Ω/km
                 </div>
                 <div style={{ borderTop: "1px solid #1E3A5F", marginTop: "10px", paddingTop: "10px" }}>
-                  VD% = {vResult.VD.toFixed(9)} ÷ {vVolt} × 100% = {vResult.pct.toFixed(4)}%
+                  VD% = {vResult.VD.toFixed(4)} ÷ {vVolt} × 100% = {vResult.pct.toFixed(4)}%
                 </div>
               </div>
 
@@ -617,7 +581,7 @@ export default function Page() {
                 <strong>3. 輸入距離：</strong>填配電盤到設備端的單程距離，單位為 m。<br />
                 <strong>4. 選計算電壓：</strong>常見為 110V、220V、380V。<br />
                 <strong>5. 輸入負載分解：</strong>KVA 欄通常放一般負載，HP 欄放馬達，kW 欄放電熱或實功負載；系統會依計算書公式自動算 PF。<br />
-                <strong>6. 選導線、線徑與條數：</strong>條數依計算書「5.5-2、5.5×2」邏輯，代表並聯組數；系統會將 R、X 除以條數後再計算。<br />
+                <strong>6. 選導線與線徑：</strong>系統會自動帶入 R、X 阻抗。<br />
                 <strong>7. 看結果：</strong>若壓降百分率超過許可值，優先加大線徑、降低距離或調整供電方式。
               </div>
             </div>
