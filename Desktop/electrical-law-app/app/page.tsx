@@ -798,7 +798,7 @@ export default function Page() {
                   <div key={label} style={{ gridColumn: label === "功率因數 cosθ" ? "1 / -1" : undefined }}>
                     <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px" }}>{label}</div>
                     <input type="number" value={val} step={step}
-                      onChange={e => set(Number(e.target.value))}
+                      onChange={e => (set as React.Dispatch<React.SetStateAction<any>>)(typeof val === "string" ? e.target.value : Number(e.target.value))}
                       style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "5px", color: "#CBD5E1", padding: "6px 8px", fontSize: "11px" }} />
                   </div>
                 ))}
