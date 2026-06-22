@@ -77,10 +77,14 @@ export default function Page() {
   const [extractError, setExtractError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false); // 預設收起（手機友好）
   const [tab, setTab] = useState<"docs" | "quick" | "vdrop">("docs");
+  const [appMode, setAppMode] = useState<"law" | "vdrop">("law");
+  const [guideOpen, setGuideOpen] = useState(false);
 
   // 電壓降計算狀態
   const [vPhase, setVPhase] = useState<"1p2w" | "1p3w" | "3p4w" | "3p3w">("1p3w");
   const [vVolt, setVVolt] = useState(220);
+  const [vLoadKW, setVLoadKW] = useState(2);
+  const [vLoadType, setVLoadType] = useState<"lighting" | "socket" | "motor" | "custom">("socket");
   const [vCurrent, setVCurrent] = useState(9.45);
   const [vLength, setVLength] = useState(30);
   const [vPF, setVPF] = useState(0.9);
@@ -100,6 +104,13 @@ export default function Page() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // 負載型態預設功率因數。若選「自訂」，可手動輸入功率因數。
+  useEffect(() => {
+    if (vLoadType === "lighting") setVPF(0.95);
+    if (vLoadType === "socket") setVPF(0.9);
+    if (vLoadType === "motor") setVPF(0.85);
+  }, [vLoadType]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -171,16 +182,29 @@ export default function Page() {
     return wireDB[wire]?.[mm] || {R: vR, X: vX};
   };
 
+  const calcCurrent = () => {
+    const kw = Math.max(Number(vLoadKW) || 0, 0);
+    const pf = Math.min(Math.max(Number(vPF) || 0.9, 0.01), 1);
+    const volt = Math.max(Number(vVolt) || 1, 1);
+
+    if (vPhase === "3p4w" || vPhase === "3p3w") {
+      return (kw * 1000) / (Math.sqrt(3) * volt * pf);
+    }
+    return (kw * 1000) / (volt * pf);
+  };
+
   const calcVD = () => {
     const {R, X} = getWireRX(vWire, vMM);
-    const sinPF = Math.sqrt(1 - vPF * vPF);
-    const Z = R * vPF + X * sinPF;
+    const current = calcCurrent();
+    const safePF = Math.min(Math.max(Number(vPF) || 0.9, 0.01), 1);
+    const sinPF = Math.sqrt(Math.max(0, 1 - safePF * safePF));
+    const Z = R * safePF + X * sinPF;
     let VD = 0;
-    if(vPhase === "1p2w") VD = 2 * vLength/1000 * vCurrent * Z;
-    else if(vPhase === "1p3w" || vPhase === "3p4w") VD = vLength/1000 * vCurrent * Z;
-    else VD = Math.sqrt(3) * vLength/1000 * vCurrent * Z;
+    if(vPhase === "1p2w") VD = 2 * vLength/1000 * current * Z;
+    else if(vPhase === "1p3w" || vPhase === "3p4w") VD = vLength/1000 * current * Z;
+    else VD = Math.sqrt(3) * vLength/1000 * current * Z;
     const pct = VD / vVolt * 100;
-    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF };
+    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF, current };
   };
 
   const vResult = calcVD();
@@ -194,7 +218,361 @@ export default function Page() {
     }
   };
 
+
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  if (appMode === "vdrop") {
+    return (
+      <div style={{
+        minHeight: "100dvh",
+        background: "#0D1B2A",
+        color: "#E2E8F0",
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
+        padding: "18px",
+      }}>
+        <div style={{
+          maxWidth: "1180px",
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}>
+          <div style={{
+            background: "#0A1520",
+            border: "1px solid #1E3A5F",
+            borderRadius: "14px",
+            padding: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}>
+            <button
+              onClick={() => setAppMode("law")}
+              style={{
+                background: "transparent",
+                border: "1px solid #1E3A5F",
+                color: "#94A3B8",
+                borderRadius: "8px",
+                padding: "9px 12px",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              ← 返回法規 AI
+            </button>
+            <div style={{
+              width: "38px",
+              height: "38px",
+              background: "#F5C518",
+              color: "#0D1B2A",
+              borderRadius: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+              fontWeight: 800,
+            }}>
+              🔌
+            </div>
+            <div style={{ flex: 1, minWidth: "220px" }}>
+              <div style={{ fontSize: "20px", fontWeight: 800 }}>電壓降計算專區</div>
+              <div style={{ fontSize: "12px", color: "#64748B", marginTop: "3px" }}>
+                輸入負載、距離、計算電壓、線徑後，自動估算電流、功率因數、總阻抗、電壓降與壓降百分率
+              </div>
+            </div>
+            <button
+              onClick={() => setGuideOpen(true)}
+              style={{
+                background: "#F5C518",
+                color: "#0D1B2A",
+                border: "none",
+                borderRadius: "8px",
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontWeight: 800,
+                fontSize: "13px",
+              }}
+            >
+              使用指南
+            </button>
+          </div>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(280px, 420px) 1fr",
+            gap: "16px",
+          }}>
+            <div style={{
+              background: "#0A1520",
+              border: "1px solid #1E3A5F",
+              borderRadius: "14px",
+              padding: "16px",
+            }}>
+              <div style={{ color: "#F5C518", fontSize: "12px", letterSpacing: "2px", fontWeight: 800, marginBottom: "14px" }}>
+                ◈ 輸入條件
+              </div>
+
+              <div style={{ display: "grid", gap: "12px" }}>
+                <label>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>供電方式</div>
+                  <select value={vPhase} onChange={e => {
+                    const v = e.target.value as typeof vPhase;
+                    setVPhase(v);
+                    setVVolt(v === "3p4w" || v === "3p3w" ? 380 : 220);
+                  }} style={{
+                    width: "100%", background: "#111f2e", border: "1px solid #1E3A5F",
+                    borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px",
+                  }}>
+                    <option value="1p2w">1φ2W — 單相二線</option>
+                    <option value="1p3w">1φ3W — 單相三線</option>
+                    <option value="3p4w">3φ4W — 三相四線</option>
+                    <option value="3p3w">3φ3W — 三相三線</option>
+                  </select>
+                </label>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>負載 kW</div>
+                    <input type="number" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(Number(e.target.value))}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                  </label>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
+                    <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                  </label>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>計算電壓 V</div>
+                    <select value={vVolt} onChange={e => setVVolt(Number(e.target.value))}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
+                      <option value={110}>110 V</option>
+                      <option value={220}>220 V</option>
+                      <option value={380}>380 V</option>
+                    </select>
+                  </label>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>許可壓降</div>
+                    <select value={vLimit} onChange={e => setVLimit(Number(e.target.value))}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
+                      <option value={3}>3% 照明</option>
+                      <option value={5}>5% 一般動力</option>
+                      <option value={10}>10% 馬達起動</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>負載型態 / 功率因數</div>
+                  <select value={vLoadType} onChange={e => setVLoadType(e.target.value as typeof vLoadType)}
+                    style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
+                    <option value="lighting">照明負載 — PF 0.95</option>
+                    <option value="socket">一般插座 / 設備 — PF 0.90</option>
+                    <option value="motor">馬達負載 — PF 0.85</option>
+                    <option value="custom">自訂功率因數</option>
+                  </select>
+                </label>
+
+                <label>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>功率因數 cosθ</div>
+                  <input type="number" value={vPF} step="0.01" min="0.01" max="1" readOnly={vLoadType !== "custom"}
+                    onChange={e => setVPF(Number(e.target.value))}
+                    style={{
+                      width: "100%",
+                      background: vLoadType !== "custom" ? "#0a1420" : "#111f2e",
+                      border: "1px solid #1E3A5F",
+                      borderRadius: "8px",
+                      color: vLoadType !== "custom" ? "#64748B" : "#CBD5E1",
+                      padding: "10px",
+                      fontSize: "13px",
+                    }} />
+                </label>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>導線種類</div>
+                    <select value={vWire} onChange={e => updateWire(e.target.value, vMM)}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
+                      <option value="PVC">PVC 600V</option>
+                      <option value="FR">FR-LSOH</option>
+                      <option value="XLPE">XLPE</option>
+                      <option value="custom">自訂阻抗</option>
+                    </select>
+                  </label>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>線徑 mm²</div>
+                    <select value={vMM} onChange={e => updateWire(vWire, Number(e.target.value))}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
+                      {wireMMList.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                {vWire === "custom" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <label>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>R Ω/km</div>
+                      <input type="number" value={vR} step="0.0001" onChange={e => setVR(Number(e.target.value))}
+                        style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                    </label>
+                    <label>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>X Ω/km</div>
+                      <input type="number" value={vX} step="0.0001" onChange={e => setVX(Number(e.target.value))}
+                        style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              background: "#0A1520",
+              border: "1px solid #1E3A5F",
+              borderRadius: "14px",
+              padding: "16px",
+            }}>
+              <div style={{ color: "#F5C518", fontSize: "12px", letterSpacing: "2px", fontWeight: 800, marginBottom: "14px" }}>
+                ◈ 計算結果
+              </div>
+
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "12px",
+                marginBottom: "16px",
+              }}>
+                {[
+                  { label: "估算電流 I", val: `${vResult.current.toFixed(3)} A` },
+                  { label: "功率因數 PF", val: `${vPF.toFixed(3)}` },
+                  { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
+                  { label: "電壓降 VD", val: `${vResult.VD.toFixed(4)} V` },
+                  { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
+                  { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    background: "#111f2e",
+                    border: "1px solid #1E3A5F",
+                    borderRadius: "10px",
+                    padding: "14px",
+                  }}>
+                    <div style={{ fontSize: "11px", color: "#64748B", marginBottom: "6px" }}>{item.label}</div>
+                    <div style={{ fontSize: "18px", color: "#7DD3FC", fontWeight: 800 }}>{item.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{
+                padding: "12px 14px",
+                borderRadius: "10px",
+                fontSize: "14px",
+                fontWeight: 800,
+                textAlign: "center",
+                background: vResult.pct <= vLimit * 0.6 ? "#1a3a1a" : vResult.pct <= vLimit ? "#2a2a0a" : "#3a1a1a",
+                color: vResult.pct <= vLimit * 0.6 ? "#4ade80" : vResult.pct <= vLimit ? "#fbbf24" : "#f87171",
+                border: `1px solid ${vResult.pct <= vLimit * 0.6 ? "#2a6a2a" : vResult.pct <= vLimit ? "#5a5a0a" : "#6a2a2a"}`,
+                marginBottom: "16px",
+              }}>
+                {vResult.pct <= vLimit * 0.6 ? "✓ 符合標準，裕量充足"
+                  : vResult.pct <= vLimit ? "⚠ 符合標準，但接近上限"
+                  : "✕ 超出許可壓降，建議加大線徑或縮短迴路距離"}
+              </div>
+
+              <div style={{
+                background: "#0D1B2A",
+                border: "1px solid #1E3A5F",
+                borderRadius: "10px",
+                padding: "14px",
+                color: "#94A3B8",
+                fontSize: "12px",
+                lineHeight: "1.9",
+              }}>
+                <div style={{ color: "#F5C518", fontWeight: 800, marginBottom: "8px" }}>公式追蹤</div>
+                <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
+                  {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
+                </div>
+                <div style={{ fontFamily: "monospace" }}>
+                  Z = R×cosθ + X×sinθ
+                </div>
+                <div style={{ fontFamily: "monospace" }}>
+                  Z = {vResult.R} × {vPF.toFixed(3)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
+                </div>
+                <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
+                  Z = {vResult.Z.toFixed(6)} Ω/km
+                </div>
+                <div style={{ borderTop: "1px solid #1E3A5F", marginTop: "10px", paddingTop: "10px" }}>
+                  VD% = {vResult.VD.toFixed(4)} ÷ {vVolt} × 100% = {vResult.pct.toFixed(4)}%
+                </div>
+              </div>
+
+              <div style={{
+                marginTop: "12px",
+                background: "#0a1220",
+                border: "1px solid #1E3A5F",
+                borderRadius: "10px",
+                padding: "12px",
+                color: "#64748B",
+                fontSize: "11px",
+                lineHeight: "1.8",
+              }}>
+                注意：功率因數不是由負載、距離、電壓、線徑反推得出，而是依設備型錄、銘牌或負載型態預設。正式送審或施工計算時，仍應以最新版法規、業主規範與設備資料為準。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {guideOpen && (
+          <div onClick={() => setGuideOpen(false)} style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "18px",
+            zIndex: 100,
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: "min(680px, 100%)",
+              background: "#0A1520",
+              border: "1px solid #1E3A5F",
+              borderRadius: "14px",
+              padding: "20px",
+              color: "#CBD5E1",
+              lineHeight: "1.9",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", marginBottom: "10px" }}>
+                <div style={{ fontSize: "18px", fontWeight: 800, color: "#F5C518" }}>電壓降使用指南</div>
+                <button onClick={() => setGuideOpen(false)} style={{ background: "transparent", border: "none", color: "#94A3B8", fontSize: "22px", cursor: "pointer" }}>×</button>
+              </div>
+              <div style={{ fontSize: "13px" }}>
+                <strong>1. 選供電方式：</strong>單相二線、單相三線、三相四線或三相三線。<br />
+                <strong>2. 輸入負載：</strong>以 kW 輸入，例如 2kW 就填 2。<br />
+                <strong>3. 輸入距離：</strong>填配電盤到設備端的單程距離，單位為 m。<br />
+                <strong>4. 選計算電壓：</strong>常見為 110V、220V、380V。<br />
+                <strong>5. 選負載型態：</strong>系統會帶入預設功率因數；若你有設備銘牌資料，選「自訂功率因數」。<br />
+                <strong>6. 選導線與線徑：</strong>系統會自動帶入 R、X 阻抗。<br />
+                <strong>7. 看結果：</strong>若壓降百分率超過許可值，優先加大線徑、降低距離或調整供電方式。
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          *{box-sizing:border-box}
+          button:hover{opacity:.86}
+          input,select{outline:none}
+          @media (max-width: 860px){
+            div[style*="grid-template-columns: minmax(280px, 420px) 1fr"]{
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -509,7 +887,22 @@ export default function Page() {
               {tab === "vdrop" ? "依電機技師計算書公式" : docs.length > 0 ? `依據 ${docs.length} 份上傳文件` : "AI 知識模式・上傳 PDF 切換文件模式"}
             </div>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+            <button
+              onClick={() => setAppMode("vdrop")}
+              style={{
+                background: "#F5C518",
+                color: "#0D1B2A",
+                border: "none",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 800,
+              }}
+            >
+              電壓降計算
+            </button>
             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22C55E", display: "inline-block" }} />
             <span style={{ fontSize: "10px", color: "#475569" }}>連線中</span>
           </div>
