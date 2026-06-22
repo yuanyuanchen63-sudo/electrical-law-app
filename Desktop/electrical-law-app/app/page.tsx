@@ -94,7 +94,7 @@ export default function Page() {
   const [vWire, setVWire] = useState("PVC");
   const [vMM, setVMM] = useState(2);
   const [vWireCount, setVWireCount] = useState("1");
-  const [vLimit] = useState(3);
+  const [vLimit, setVLimit] = useState(3);
   const [vR, setVR] = useState(5.657);
   const [vX, setVX] = useState(0.119);
   const chatEndRef = useRef<HTMLDivElement>(null);
