@@ -787,11 +787,9 @@ export default function Page() {
                     <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px" }}>{label}</div>
                     <input type="number" value={val} step={step}
                       onChange={e => {
-                        if (typeof val === "string") {
-                          (set as React.Dispatch<React.SetStateAction<string>>)(e.target.value);
-                        } else {
-                          (set as React.Dispatch<React.SetStateAction<number>>)(Number(e.target.value));
-                        }
+                        (set as React.Dispatch<React.SetStateAction<any>>)(
+                          typeof val === "string" ? e.target.value : Number(e.target.value)
+                        );
                       }}
                       style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "5px", color: "#CBD5E1", padding: "6px 8px", fontSize: "11px" }} />
                   </div>
@@ -827,11 +825,9 @@ export default function Page() {
                     <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px" }}>{label}</div>
                     <input type="number" value={val} step="0.0001" readOnly={vWire !== "custom"}
                       onChange={e => {
-                        if (typeof val === "string") {
-                          (set as React.Dispatch<React.SetStateAction<string>>)(e.target.value);
-                        } else {
-                          (set as React.Dispatch<React.SetStateAction<number>>)(Number(e.target.value));
-                        }
+                        (set as React.Dispatch<React.SetStateAction<any>>)(
+                          typeof val === "string" ? e.target.value : Number(e.target.value)
+                        );
                       }}
                       style={{ width: "100%", background: vWire !== "custom" ? "#0a1420" : "#111f2e", border: "1px solid #1E3A5F", borderRadius: "5px", color: vWire !== "custom" ? "#475569" : "#CBD5E1", padding: "6px 8px", fontSize: "11px" }} />
                   </div>
