@@ -89,10 +89,11 @@ export default function Page() {
   const [vLoadHP, setVLoadHP] = useState("0");
   const [vLoadKW, setVLoadKW] = useState("0");
   const [vCurrent, setVCurrent] = useState(9.45);
-  const [vLength, setVLength] = useState(30);
+  const [vLength, setVLength] = useState("30");
   const [vPF, setVPF] = useState(0.9);
   const [vWire, setVWire] = useState("PVC");
   const [vMM, setVMM] = useState(2);
+  const [vWireCount, setVWireCount] = useState("1");
   const [vLimit, setVLimit] = useState(5);
   const [vR, setVR] = useState(5.657);
   const [vX, setVX] = useState(0.119);
@@ -189,6 +190,11 @@ export default function Page() {
     if (/^\d*(\.\d*)?$/.test(value)) setter(value);
   };
 
+  const handlePositiveIntegerInput = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    // 線徑條數／並聯組數：允許暫時空白，輸入完成後計算時至少視為 1。
+    if (/^\d*$/.test(value)) setter(value);
+  };
+
   const calcLoad = () => {
     const kva = toSafeNumber(vLoadKVA);
     const hp = toSafeNumber(vLoadHP);
@@ -215,18 +221,22 @@ export default function Page() {
   };
 
   const calcVD = () => {
-    const {R, X} = getWireRX(vWire, vMM);
+    const base = getWireRX(vWire, vMM);
     const load = calcLoad();
     const current = calcCurrent();
+    const length = toSafeNumber(vLength);
+    const wireCount = Math.max(1, Math.floor(toSafeNumber(vWireCount)) || 1);
+    const R = base.R / wireCount;
+    const X = base.X / wireCount;
     const safePF = load.pf;
     const sinPF = Math.sqrt(Math.max(0, 1 - safePF * safePF));
     const Z = R * safePF + X * sinPF;
     let VD = 0;
-    if(vPhase === "1p2w") VD = 2 * vLength/1000 * current * Z;
-    else if(vPhase === "1p3w" || vPhase === "3p4w") VD = vLength/1000 * current * Z;
-    else VD = Math.sqrt(3) * vLength/1000 * current * Z;
+    if(vPhase === "1p2w") VD = 2 * length/1000 * current * Z;
+    else if(vPhase === "1p3w" || vPhase === "3p4w") VD = length/1000 * current * Z;
+    else VD = Math.sqrt(3) * length/1000 * current * Z;
     const pct = VD / vVolt * 100;
-    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF, current, load };
+    return { Z, VD, pct, vEnd: vVolt - VD, R, X, baseR: base.R, baseX: base.X, wireCount, length, sinPF, current, load };
   };
 
   const vResult = calcVD();
@@ -379,7 +389,7 @@ export default function Page() {
 
                 <label>
                   <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
-                  <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
+                  <input type="text" inputMode="decimal" value={vLength} onChange={e => handleDecimalInput(e.target.value, setVLength)}
                     style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                 </label>
 
@@ -406,7 +416,7 @@ export default function Page() {
 
                 <div style={{ background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "12px" }}>
                   <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>功率因數 cosθ｜自動計算</div>
-                  <div style={{ fontSize: "24px", color: "#7DD3FC", fontWeight: 900 }}>{vResult.load.pf.toFixed(6)}</div>
+                  <div style={{ fontSize: "24px", color: "#7DD3FC", fontWeight: 900 }}>{vResult.load.pf.toFixed(2)}</div>
                   <div style={{ marginTop: "6px", color: "#64748B", fontSize: "11px", lineHeight: "1.7" }}>
                     依計算書 G 欄公式自動帶入，不再用負載型態主觀假設。
                   </div>
@@ -429,6 +439,11 @@ export default function Page() {
                       style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
                       {wireMMList.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
+                  </label>
+                  <label>
+                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>線徑條數／並聯組數</div>
+                    <input type="text" inputMode="numeric" value={vWireCount} onChange={e => handlePositiveIntegerInput(e.target.value, setVWireCount)}
+                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                   </label>
                 </div>
 
@@ -466,10 +481,11 @@ export default function Page() {
                 marginBottom: "16px",
               }}>
                 {[
-                  { label: "估算電流 I", val: `${vResult.current.toFixed(3)} A` },
-                  { label: "功率因數 PF", val: `${vResult.load.pf.toFixed(6)}` },
+                  { label: "估算電流 I", val: `${vResult.current.toFixed(1)} A` },
+                  { label: "功率因數 PF", val: `${vResult.load.pf.toFixed(2)}` },
                   { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
-                  { label: "電壓降 VD", val: `${vResult.VD.toFixed(4)} V` },
+                  { label: "線徑條數", val: `${vResult.wireCount} 條 / 組` },
+                  { label: "電壓降 VD", val: `${vResult.VD.toFixed(9)} V` },
                   { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
                   { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
                 ].map(item => (
@@ -511,6 +527,7 @@ export default function Page() {
                 lineHeight: "1.9",
               }}>
                 <div style={{ color: "#F5C518", fontWeight: 800, marginBottom: "8px" }}>公式追蹤</div>
+                <div style={{ fontFamily: "monospace", color: "#94A3B8" }}>條數 = {vResult.wireCount}；有效 R = {vResult.baseR} ÷ {vResult.wireCount}，有效 X = {vResult.baseX} ÷ {vResult.wireCount}</div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
                 </div>
@@ -518,13 +535,13 @@ export default function Page() {
                   Z = R×cosθ + X×sinθ
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = {vResult.R} × {vResult.load.pf.toFixed(6)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
+                  Z = {vResult.R.toFixed(6)} × {vResult.load.pf.toFixed(2)} + {vResult.X.toFixed(6)} × {vResult.sinPF.toFixed(4)}
                 </div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   Z = {vResult.Z.toFixed(6)} Ω/km
                 </div>
                 <div style={{ borderTop: "1px solid #1E3A5F", marginTop: "10px", paddingTop: "10px" }}>
-                  VD% = {vResult.VD.toFixed(4)} ÷ {vVolt} × 100% = {vResult.pct.toFixed(4)}%
+                  VD% = {vResult.VD.toFixed(9)} ÷ {vVolt} × 100% = {vResult.pct.toFixed(4)}%
                 </div>
               </div>
 
@@ -574,7 +591,7 @@ export default function Page() {
                 <strong>3. 輸入距離：</strong>填配電盤到設備端的單程距離，單位為 m。<br />
                 <strong>4. 選計算電壓：</strong>常見為 110V、220V、380V。<br />
                 <strong>5. 輸入負載分解：</strong>KVA 欄通常放一般負載，HP 欄放馬達，kW 欄放電熱或實功負載；系統會依計算書公式自動算 PF。<br />
-                <strong>6. 選導線與線徑：</strong>系統會自動帶入 R、X 阻抗。<br />
+                <strong>6. 選導線、線徑與條數：</strong>條數依計算書「5.5-2、5.5×2」邏輯，代表並聯組數；系統會將 R、X 除以條數後再計算。<br />
                 <strong>7. 看結果：</strong>若壓降百分率超過許可值，優先加大線徑、降低距離或調整供電方式。
               </div>
             </div>
@@ -810,7 +827,7 @@ export default function Page() {
                 <div style={{ fontSize: "10px", color: "#F5C518", fontWeight: 700, marginBottom: "10px", letterSpacing: "1px" }}>計算結果</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "10px" }}>
                   {[
-                    { label: "電壓降 VD", val: `${vResult.VD.toFixed(4)} V` },
+                    { label: "電壓降 VD", val: `${vResult.VD.toFixed(9)} V` },
                     { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
                     { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
                     { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)}` },
