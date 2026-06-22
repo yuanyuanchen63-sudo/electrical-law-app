@@ -220,8 +220,8 @@ export default function Page() {
     const current = calcCurrent();
     const length = toSafeNumber(vLength);
     const safePF = load.pf;
-    const sinPF = Math.sqrt(Math.max(0, 1 - safePF * safePF));
-    const Z = R * safePF + X * sinPF;
+    const sinPF = Math.sin(Math.acos(safePF));
+    const Z = safePF * R + X * sinPF;
     let VD = 0;
     if(vPhase === "1p2w") VD = 2 * length/1000 * current * Z;
     else if(vPhase === "1p3w" || vPhase === "3p4w") VD = length/1000 * current * Z;
@@ -475,7 +475,9 @@ export default function Page() {
                 {[
                   { label: "估算電流 I", val: `${vResult.current.toFixed(1)} A` },
                   { label: "功率因數 PF", val: `${vResult.load.pf.toFixed(2)}` },
-                  { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
+                  { label: "電阻 R", val: `${vResult.R.toFixed(6)} Ω/km` },
+                  { label: "電抗 X", val: `${vResult.X.toFixed(6)} Ω/km` },
+                  { label: "阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
                   { label: "電壓降 VD", val: `${vResult.VD.toFixed(9)} V` },
                   { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
                   { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
@@ -522,10 +524,10 @@ export default function Page() {
                   {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = R×cosθ + X×sinθ
+                  Z = PF×R + X×SIN(ACOS(PF))
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = {vResult.R} × {vResult.load.pf.toFixed(2)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
+                  Z = {vResult.load.pf.toFixed(2)} × {vResult.R.toFixed(6)} + {vResult.X.toFixed(6)} × {vResult.sinPF.toFixed(6)}
                 </div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   Z = {vResult.Z.toFixed(6)} Ω/km
@@ -819,8 +821,9 @@ export default function Page() {
                   {[
                     { label: "電壓降 VD", val: `${vResult.VD.toFixed(9)} V` },
                     { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
-                    { label: "末端電壓", val: `${vResult.vEnd.toFixed(2)} V` },
-                    { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)}` },
+                    { label: "電阻 R", val: `${vResult.R.toFixed(6)}` },
+                    { label: "電抗 X", val: `${vResult.X.toFixed(6)}` },
+                    { label: "阻抗 Z", val: `${vResult.Z.toFixed(6)}` },
                   ].map(({ label, val }) => (
                     <div key={label} style={{ background: "#111f2e", borderRadius: "5px", padding: "8px" }}>
                       <div style={{ fontSize: "9px", color: "#475569", marginBottom: "2px" }}>{label}</div>
@@ -864,10 +867,10 @@ export default function Page() {
                   {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
                 </div>
                 <div style={{ fontFamily: "monospace", fontSize: "10px", marginBottom: "4px" }}>
-                  Z = R×cosθ + X×sinθ
+                  Z = PF×R + X×SIN(ACOS(PF))
                 </div>
                 <div style={{ fontFamily: "monospace", fontSize: "10px", marginBottom: "6px" }}>
-                  = {vResult.R}×{vPF.toFixed(3)} + {vResult.X}×{vResult.sinPF.toFixed(4)}<br/>
+                  = {vResult.load.pf.toFixed(2)}×{vResult.R.toFixed(6)} + {vResult.X.toFixed(6)}×{vResult.sinPF.toFixed(6)}<br/>
                   = <span style={{ color: "#7DD3FC" }}>{vResult.Z.toFixed(6)} Ω/km</span>
                 </div>
                 <div style={{ borderTop: "1px solid #1E3A5F", paddingTop: "6px", fontSize: "9px", lineHeight: "1.8" }}>
@@ -883,7 +886,7 @@ export default function Page() {
                 1. 1φ2W：VD = 2×L×I×Z<br/>
                 2. 1φ3W 或 3φ4W：VD = L×I×Z<br/>
                 3. 3φ3W：VD = √3×L×I×Z<br/>
-                4. Z = R×cosθ + X×sinθ（Ω/km）<br/>
+                4. Z = PF×R + X×SIN(ACOS(PF))（Ω/km）<br/>
                 5. VD% = VD÷V×100%
               </div>
             </div>
