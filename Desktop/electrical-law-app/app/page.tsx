@@ -524,7 +524,7 @@ export default function Page() {
                   {vPhase === "1p2w" ? "VD = 2 × L × I × Z" : vPhase === "3p3w" ? "VD = √3 × L × I × Z" : "VD = L × I × Z"}
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = PF×R + X×SIN(ACOS(PF))
+                  Z = R × PF + X × Sin(Cos⁻¹(PF))
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
                   Z = {vResult.load.pf.toFixed(2)} × {vResult.R.toFixed(6)} + {vResult.X.toFixed(6)} × {vResult.sinPF.toFixed(6)}
