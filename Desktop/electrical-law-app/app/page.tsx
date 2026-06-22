@@ -184,8 +184,9 @@ export default function Page() {
   };
 
   const handleDecimalInput = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
-    // 允許空白、小數點、小數一位；例如 0.5、1.5、155.5
-    if (/^\d*(\.\d{0,1})?$/.test(value)) setter(value);
+    // 允許空白、小數點與任意小數位；例如 0.5、1.5、1.234、155.75
+    // 僅限制格式為「非負數」，不限制小數點後位數。
+    if (/^\d*(\.\d*)?$/.test(value)) setter(value);
   };
 
   const calcLoad = () => {
@@ -353,26 +354,26 @@ export default function Page() {
                 </label>
 
                 <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "12px" }}>
-                  <div style={{ fontSize: "12px", color: "#F5C518", fontWeight: 800, marginBottom: "10px" }}>負載輸入｜依計算書 KVA / HP / kW 模板</div>
+                  <div style={{ fontSize: "12px", color: "#F5C518", fontWeight: 800, marginBottom: "10px" }}>負載輸入｜燈 / 力 / 熱（三類負載）</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                     <label>
-                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>一般負載 KVA</div>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>燈｜一般負載 KVA</div>
                       <input type="text" inputMode="decimal" value={vLoadKVA} onChange={e => handleDecimalInput(e.target.value, setVLoadKVA)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
-                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>馬達 HP</div>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>力｜馬達 HP</div>
                       <input type="text" inputMode="decimal" value={vLoadHP} onChange={e => handleDecimalInput(e.target.value, setVLoadHP)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
-                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>電熱 / 實功 kW</div>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>熱｜電熱 / 實功 kW</div>
                       <input type="text" inputMode="decimal" value={vLoadKW} onChange={e => handleDecimalInput(e.target.value, setVLoadKW)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                   </div>
                   <div style={{ marginTop: "8px", color: "#64748B", fontSize: "11px", lineHeight: "1.7" }}>
-                    PF 公式：〔KVA×1000×0.9 + HP×746 + kW×1000〕÷〔KVA×1000 + HP×1000 + kW×1000〕
+                    PF 公式：〔燈KVA×1000×0.9 + 力HP×746 + 熱kW×1000〕÷〔燈KVA×1000 + 力HP×1000 + 熱kW×1000〕
                   </div>
                 </div>
 
