@@ -83,8 +83,11 @@ export default function Page() {
   // 電壓降計算狀態
   const [vPhase, setVPhase] = useState<"1p2w" | "1p3w" | "3p4w" | "3p3w">("1p3w");
   const [vVolt, setVVolt] = useState(220);
-  const [vLoadKW, setVLoadKW] = useState(2);
-  const [vLoadType, setVLoadType] = useState<"lighting" | "socket" | "motor" | "custom">("socket");
+  // 依計算書模板：負載欄位拆為 KVA、HP、kW，用於計算 PF。
+  // PF = (KVA×1000×0.9 + HP×746 + kW×1000) ÷ (KVA×1000 + HP×1000 + kW×1000)
+  const [vLoadKVA, setVLoadKVA] = useState(2);
+  const [vLoadHP, setVLoadHP] = useState(0);
+  const [vLoadKW, setVLoadKW] = useState(0);
   const [vCurrent, setVCurrent] = useState(9.45);
   const [vLength, setVLength] = useState(30);
   const [vPF, setVPF] = useState(0.9);
@@ -104,13 +107,6 @@ export default function Page() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  // 負載型態預設功率因數。若選「自訂」，可手動輸入功率因數。
-  useEffect(() => {
-    if (vLoadType === "lighting") setVPF(0.95);
-    if (vLoadType === "socket") setVPF(0.9);
-    if (vLoadType === "motor") setVPF(0.85);
-  }, [vLoadType]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -182,21 +178,36 @@ export default function Page() {
     return wireDB[wire]?.[mm] || {R: vR, X: vX};
   };
 
-  const calcCurrent = () => {
+  const calcLoad = () => {
+    const kva = Math.max(Number(vLoadKVA) || 0, 0);
+    const hp = Math.max(Number(vLoadHP) || 0, 0);
     const kw = Math.max(Number(vLoadKW) || 0, 0);
-    const pf = Math.min(Math.max(Number(vPF) || 0.9, 0.01), 1);
+
+    // 對照計算書欄位：
+    // C欄負載(VA) = N欄KVA×1000 + O欄HP×1000 + P欄kW×1000
+    // G欄功率因數(PF) = (N×1000×0.9 + O×746 + P×1000) ÷ C
+    const loadVA = kva * 1000 + hp * 1000 + kw * 1000;
+    const realW = kva * 1000 * 0.9 + hp * 746 + kw * 1000;
+    const pf = loadVA > 0 ? Math.min(Math.max(realW / loadVA, 0.01), 1) : 0.9;
+
+    return { kva, hp, kw, loadVA, realW, pf };
+  };
+
+  const calcCurrent = () => {
+    const load = calcLoad();
     const volt = Math.max(Number(vVolt) || 1, 1);
 
     if (vPhase === "3p4w" || vPhase === "3p3w") {
-      return (kw * 1000) / (Math.sqrt(3) * volt * pf);
+      return load.loadVA / (Math.sqrt(3) * volt);
     }
-    return (kw * 1000) / (volt * pf);
+    return load.loadVA / volt;
   };
 
   const calcVD = () => {
     const {R, X} = getWireRX(vWire, vMM);
+    const load = calcLoad();
     const current = calcCurrent();
-    const safePF = Math.min(Math.max(Number(vPF) || 0.9, 0.01), 1);
+    const safePF = load.pf;
     const sinPF = Math.sqrt(Math.max(0, 1 - safePF * safePF));
     const Z = R * safePF + X * sinPF;
     let VD = 0;
@@ -204,7 +215,7 @@ export default function Page() {
     else if(vPhase === "1p3w" || vPhase === "3p4w") VD = vLength/1000 * current * Z;
     else VD = Math.sqrt(3) * vLength/1000 * current * Z;
     const pct = VD / vVolt * 100;
-    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF, current };
+    return { Z, VD, pct, vEnd: vVolt - VD, R, X, sinPF, current, load };
   };
 
   const vResult = calcVD();
@@ -278,7 +289,7 @@ export default function Page() {
             <div style={{ flex: 1, minWidth: "220px" }}>
               <div style={{ fontSize: "20px", fontWeight: 800 }}>電壓降計算專區</div>
               <div style={{ fontSize: "12px", color: "#64748B", marginTop: "3px" }}>
-                輸入負載、距離、計算電壓、線徑後，自動估算電流、功率因數、總阻抗、電壓降與壓降百分率
+                依計算書模板輸入 KVA、HP、kW、距離、電壓與線徑，自動計算功率因數、總阻抗、電壓降與壓降百分率
               </div>
             </div>
             <button
@@ -331,18 +342,35 @@ export default function Page() {
                   </select>
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <label>
-                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>負載 kW</div>
-                    <input type="number" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(Number(e.target.value))}
-                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
-                  </label>
-                  <label>
-                    <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
-                    <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
-                      style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
-                  </label>
+                <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "12px" }}>
+                  <div style={{ fontSize: "12px", color: "#F5C518", fontWeight: 800, marginBottom: "10px" }}>負載輸入｜依計算書 KVA / HP / kW 模板</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+                    <label>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>一般負載 KVA</div>
+                      <input type="number" value={vLoadKVA} step="0.01" onChange={e => setVLoadKVA(Number(e.target.value))}
+                        style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                    </label>
+                    <label>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>馬達 HP</div>
+                      <input type="number" value={vLoadHP} step="0.01" onChange={e => setVLoadHP(Number(e.target.value))}
+                        style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                    </label>
+                    <label>
+                      <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>電熱 / 實功 kW</div>
+                      <input type="number" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(Number(e.target.value))}
+                        style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                    </label>
+                  </div>
+                  <div style={{ marginTop: "8px", color: "#64748B", fontSize: "11px", lineHeight: "1.7" }}>
+                    PF 公式：〔KVA×1000×0.9 + HP×746 + kW×1000〕÷〔KVA×1000 + HP×1000 + kW×1000〕
+                  </div>
                 </div>
+
+                <label>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
+                  <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
+                    style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
+                </label>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <label>
@@ -365,31 +393,13 @@ export default function Page() {
                   </label>
                 </div>
 
-                <label>
-                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>負載型態 / 功率因數</div>
-                  <select value={vLoadType} onChange={e => setVLoadType(e.target.value as typeof vLoadType)}
-                    style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }}>
-                    <option value="lighting">照明負載 — PF 0.95</option>
-                    <option value="socket">一般插座 / 設備 — PF 0.90</option>
-                    <option value="motor">馬達負載 — PF 0.85</option>
-                    <option value="custom">自訂功率因數</option>
-                  </select>
-                </label>
-
-                <label>
-                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>功率因數 cosθ</div>
-                  <input type="number" value={vPF} step="0.01" min="0.01" max="1" readOnly={vLoadType !== "custom"}
-                    onChange={e => setVPF(Number(e.target.value))}
-                    style={{
-                      width: "100%",
-                      background: vLoadType !== "custom" ? "#0a1420" : "#111f2e",
-                      border: "1px solid #1E3A5F",
-                      borderRadius: "8px",
-                      color: vLoadType !== "custom" ? "#64748B" : "#CBD5E1",
-                      padding: "10px",
-                      fontSize: "13px",
-                    }} />
-                </label>
+                <div style={{ background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "12px" }}>
+                  <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>功率因數 cosθ｜自動計算</div>
+                  <div style={{ fontSize: "24px", color: "#7DD3FC", fontWeight: 900 }}>{vResult.load.pf.toFixed(6)}</div>
+                  <div style={{ marginTop: "6px", color: "#64748B", fontSize: "11px", lineHeight: "1.7" }}>
+                    依計算書 G 欄公式自動帶入，不再用負載型態主觀假設。
+                  </div>
+                </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <label>
@@ -446,7 +456,7 @@ export default function Page() {
               }}>
                 {[
                   { label: "估算電流 I", val: `${vResult.current.toFixed(3)} A` },
-                  { label: "功率因數 PF", val: `${vPF.toFixed(3)}` },
+                  { label: "功率因數 PF", val: `${vResult.load.pf.toFixed(6)}` },
                   { label: "總阻抗 Z", val: `${vResult.Z.toFixed(6)} Ω/km` },
                   { label: "電壓降 VD", val: `${vResult.VD.toFixed(4)} V` },
                   { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
@@ -497,7 +507,7 @@ export default function Page() {
                   Z = R×cosθ + X×sinθ
                 </div>
                 <div style={{ fontFamily: "monospace" }}>
-                  Z = {vResult.R} × {vPF.toFixed(3)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
+                  Z = {vResult.R} × {vResult.load.pf.toFixed(6)} + {vResult.X} × {vResult.sinPF.toFixed(4)}
                 </div>
                 <div style={{ fontFamily: "monospace", color: "#7DD3FC" }}>
                   Z = {vResult.Z.toFixed(6)} Ω/km
@@ -517,7 +527,7 @@ export default function Page() {
                 fontSize: "11px",
                 lineHeight: "1.8",
               }}>
-                注意：功率因數不是由負載、距離、電壓、線徑反推得出，而是依設備型錄、銘牌或負載型態預設。正式送審或施工計算時，仍應以最新版法規、業主規範與設備資料為準。
+                注意：本頁功率因數依你提供的計算書模板估算。若正式送審或施工計算已有設備銘牌、型錄或業主指定 PF，仍應優先採用正式資料。
               </div>
             </div>
           </div>
@@ -552,7 +562,7 @@ export default function Page() {
                 <strong>2. 輸入負載：</strong>以 kW 輸入，例如 2kW 就填 2。<br />
                 <strong>3. 輸入距離：</strong>填配電盤到設備端的單程距離，單位為 m。<br />
                 <strong>4. 選計算電壓：</strong>常見為 110V、220V、380V。<br />
-                <strong>5. 選負載型態：</strong>系統會帶入預設功率因數；若你有設備銘牌資料，選「自訂功率因數」。<br />
+                <strong>5. 輸入負載分解：</strong>KVA 欄通常放一般負載，HP 欄放馬達，kW 欄放電熱或實功負載；系統會依計算書公式自動算 PF。<br />
                 <strong>6. 選導線與線徑：</strong>系統會自動帶入 R、X 阻抗。<br />
                 <strong>7. 看結果：</strong>若壓降百分率超過許可值，優先加大線徑、降低距離或調整供電方式。
               </div>
