@@ -95,7 +95,7 @@ export default function Page() {
   const [vWire, setVWire] = useState("PVC");
   const [vMM, setVMM] = useState(30);
   const [vWireCount, setVWireCount] = useState("1");
-  const [vLimit, setVLimit] = useState(5);
+  const vLimit = 3;
   const [vR, setVR] = useState("0.606");
   const [vX, setVX] = useState("0.094");
 
@@ -262,13 +262,11 @@ export default function Page() {
     // Excel I欄 Z列：Z = R×PF + X×SIN(ACOS(PF))
     const Z = R * load.pf + X * sinTheta;
 
-    // Excel J欄：VD = I×L×Z÷1000；1φ2W 再 ×2；3φ3W 採 √3×I×L×Z÷1000
-    let VD = 0;
-    if (vPhase === "1p2w") VD = current * length * Z / 1000 * 2;
-    else if (vPhase === "3p3w") VD = Math.sqrt(3) * current * length * Z / 1000;
-    else VD = current * length * Z / 1000;
+    // 指定公式：電壓降 VD = 電流 I × 距離 L × 總阻抗 Z ÷ 1000
+    const VD = current * length * Z / 1000;
 
-    const pctBaseV = voltageForPercent();
+    // 指定公式：壓降百分率 = 電壓降 ÷ 電壓 × 100
+    const pctBaseV = vVolt;
     const pct = pctBaseV > 0 ? VD / pctBaseV * 100 : 0;
     const vEnd = pctBaseV - VD;
 
@@ -428,14 +426,11 @@ export default function Page() {
                     <div style={labelStyle}>線徑條數 / 並聯組數</div>
                     <input type="text" inputMode="numeric" value={vWireCount} onChange={e => handleIntegerInput(e.target.value, setVWireCount)} style={inputStyle} />
                   </label>
-                  <label>
+                  <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "8px", padding: "10px" }}>
                     <div style={labelStyle}>許可壓降</div>
-                    <select value={vLimit} onChange={e => setVLimit(Number(e.target.value))} style={inputStyle}>
-                      <option value={3}>3% 照明</option>
-                      <option value={5}>5% 一般動力</option>
-                      <option value={10}>10% 馬達起動</option>
-                    </select>
-                  </label>
+                    <div style={{ color: "#F5C518", fontSize: "15px", fontWeight: 900 }}>3%</div>
+                    <div style={{ color: "#64748B", fontSize: "11px", marginTop: "4px" }}>全系統統一採用 3% 判斷</div>
+                  </div>
                 </div>
 
                 {vWire === "custom" && (
@@ -453,100 +448,74 @@ export default function Page() {
               </div>
             </div>
 
-            <div style={{ background: "#0A1520", border: "1px solid #1E3A5F", borderRadius: "14px", padding: "16px", overflowX: "auto" }}>
-              <div style={{ color: "#F5C518", fontSize: "12px", letterSpacing: "2px", fontWeight: 800, marginBottom: "14px" }}>◈ Excel 欄位式計算結果</div>
+            <div style={{ background: "#0A1520", border: "1px solid #1E3A5F", borderRadius: "14px", padding: "16px" }}>
+              <div style={{ color: "#F5C518", fontSize: "12px", letterSpacing: "2px", fontWeight: 800, marginBottom: "14px" }}>◈ 計算結果</div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px", marginBottom: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px", marginBottom: "14px" }}>
                 {[
+                  { label: "說明", val: vDesc || "—" },
+                  { label: "計算電壓", val: `${phaseLabel(vPhase)}｜${voltageDisplay()} V` },
                   { label: "負載", val: `${vResult.load.loadVA.toLocaleString(undefined, { maximumFractionDigits: 3 })} VA` },
-                  { label: "電流(I)", val: `${vResult.current.toFixed(1)} A` },
-                  { label: "功率因數", val: `${vResult.load.pf.toFixed(2)}` },
-                  { label: "總阻抗(Z)", val: `${vResult.Z.toFixed(9)} Ω/km` },
+                  { label: "電流 I", val: `${vResult.current.toFixed(1)} A` },
+                  { label: "距離 L", val: `${vResult.length || 0} m` },
+                  { label: "線徑", val: `${vWire} ${vMM} mm²${vResult.wireCount > 1 ? ` × ${vResult.wireCount}` : ""}` },
+                  { label: "功率因數 PF", val: vResult.load.pf.toFixed(2) },
+                  { label: "R 阻抗", val: `${vResult.R.toFixed(9)} Ω/km` },
+                  { label: "X 阻抗", val: `${vResult.X.toFixed(9)} Ω/km` },
+                  { label: "Z 阻抗", val: `${vResult.Z.toFixed(9)} Ω/km` },
                   { label: "電壓降", val: `${vResult.VD.toFixed(9)} V` },
                   { label: "壓降百分率", val: `${vResult.pct.toFixed(4)} %` },
                 ].map(item => (
                   <div key={item.label} style={{ background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "12px" }}>
                     <div style={{ color: "#64748B", fontSize: "11px", marginBottom: "5px" }}>{item.label}</div>
-                    <div style={{ color: "#7DD3FC", fontSize: "17px", fontWeight: 900 }}>{item.val}</div>
+                    <div style={{ color: "#7DD3FC", fontSize: "17px", fontWeight: 900, wordBreak: "break-word" }}>{item.val}</div>
                   </div>
                 ))}
               </div>
 
-              <table style={{ width: "100%", minWidth: "980px", borderCollapse: "collapse", fontSize: "13px", color: "#CBD5E1" }}>
-                <thead>
-                  <tr>
-                    {["說明", "計算電壓", "負載", "電流(I)", "距離(L)", "線徑", "功率因數", "總阻抗(Z)", "電壓降", "壓降百分率"].map(h => (
-                      <th key={h} style={{ border: "1px solid #31577d", padding: "8px", color: "#F5C518", background: "#0D1B2A", textAlign: "center" }}>{h}</th>
-                    ))}
-                  </tr>
-                  <tr>
-                    {["", "", "(VA)", "(A)", "(M)", "(mm²)", "(PF)", "(Ω/Km)", "(V)", "(%)"].map((h, i) => (
-                      <th key={i} style={{ border: "1px solid #31577d", padding: "6px", color: "#94A3B8", background: "#0D1B2A", textAlign: "center", fontWeight: 500 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={td}>{vDesc || "—"}</td>
-                    <td style={td}>{phaseLabel(vPhase)}</td>
-                    <td style={td}>{vResult.load.loadVA.toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
-                    <td style={td}>{vResult.current.toFixed(1)}</td>
-                    <td style={td}>{vResult.length || "—"}</td>
-                    <td style={td}>{vWire}</td>
-                    <td style={td}>{vResult.load.pf.toFixed(2)}</td>
-                    <td style={td}>R：{vResult.R.toFixed(9)}</td>
-                    <td style={td}>{vResult.VD.toFixed(9)}</td>
-                    <td style={td}>{vResult.pct.toFixed(4)}</td>
-                  </tr>
-                  <tr>
-                    <td style={td}></td>
-                    <td style={td}>{voltageDisplay()}</td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}>{vMM}{vResult.wireCount > 1 ? ` × ${vResult.wireCount}` : ""}</td>
-                    <td style={td}></td>
-                    <td style={td}>X：{vResult.X.toFixed(9)}</td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                  </tr>
-                  <tr>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={{ ...td, color: "#7DD3FC", fontWeight: 900 }}>Z：{vResult.Z.toFixed(9)}</td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginBottom: "14px" }}>
+                <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "14px" }}>
+                  <div style={{ color: "#F5C518", fontWeight: 900, marginBottom: "8px", fontSize: "13px" }}>阻抗拆解</div>
+                  <div style={{ color: "#94A3B8", fontSize: "12px", lineHeight: "1.9" }}>
+                    <div>參照表 R：{vResult.baseR} Ω/km</div>
+                    <div>參照表 X：{vResult.baseX} Ω/km</div>
+                    <div>線徑條數：{vResult.wireCount}</div>
+                    <div>有效 R：{vResult.R.toFixed(9)} Ω/km</div>
+                    <div>有效 X：{vResult.X.toFixed(9)} Ω/km</div>
+                    <div>計算 Z：{vResult.Z.toFixed(9)} Ω/km</div>
+                  </div>
+                </div>
 
-              <div style={{
-                marginTop: "14px",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                fontSize: "14px",
-                fontWeight: 900,
-                textAlign: "center",
-                background: vResult.pct <= vLimit * 0.6 ? "#1a3a1a" : vResult.pct <= vLimit ? "#2a2a0a" : "#3a1a1a",
-                color: vResult.pct <= vLimit * 0.6 ? "#4ade80" : vResult.pct <= vLimit ? "#fbbf24" : "#f87171",
-                border: `1px solid ${vResult.pct <= vLimit * 0.6 ? "#2a6a2a" : vResult.pct <= vLimit ? "#5a5a0a" : "#6a2a2a"}`,
-              }}>
-                {vResult.pct <= vLimit * 0.6 ? "✓ 符合標準，裕量充足" : vResult.pct <= vLimit ? "⚠ 符合標準，但接近上限" : "✕ 超出許可壓降，建議加大線徑或縮短距離"}
+                <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "14px" }}>
+                  <div style={{ color: "#F5C518", fontWeight: 900, marginBottom: "8px", fontSize: "13px" }}>壓降判斷</div>
+                  <div style={{ color: "#94A3B8", fontSize: "12px", lineHeight: "1.9" }}>
+                    <div>許可壓降：3%</div>
+                    <div>目前壓降百分率：{vResult.pct.toFixed(4)}%</div>
+                    <div>末端電壓：{vResult.vEnd.toFixed(3)} V</div>
+                  </div>
+                  <div style={{
+                    marginTop: "10px",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 900,
+                    textAlign: "center",
+                    background: vResult.pct <= vLimit * 0.6 ? "#1a3a1a" : vResult.pct <= vLimit ? "#2a2a0a" : "#3a1a1a",
+                    color: vResult.pct <= vLimit * 0.6 ? "#4ade80" : vResult.pct <= vLimit ? "#fbbf24" : "#f87171",
+                    border: `1px solid ${vResult.pct <= vLimit * 0.6 ? "#2a6a2a" : vResult.pct <= vLimit ? "#5a5a0a" : "#6a2a2a"}`,
+                  }}>
+                    {vResult.pct <= vLimit * 0.6 ? "✓ 符合 3% 標準，裕量充足" : vResult.pct <= vLimit ? "⚠ 符合 3% 標準，但接近上限" : "✕ 超出 3% 許可壓降，建議加大線徑或縮短距離"}
+                  </div>
+                </div>
               </div>
 
-              <div style={{ marginTop: "14px", background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "14px", color: "#94A3B8", fontSize: "12px", lineHeight: "1.9" }}>
+              <div style={{ background: "#0D1B2A", border: "1px solid #1E3A5F", borderRadius: "10px", padding: "14px", color: "#94A3B8", fontSize: "12px", lineHeight: "1.9" }}>
                 <div style={{ color: "#F5C518", fontWeight: 900, marginBottom: "8px" }}>公式追蹤</div>
-                <div>負載 VA = {vResult.load.kva}×1000 + {vResult.load.hp}×1000 + {vResult.load.kw}×1000 = {vResult.load.loadVA.toFixed(3)} VA</div>
-                <div>PF = ({vResult.load.kva}×1000×0.9 + {vResult.load.hp}×746 + {vResult.load.kw}×1000) ÷ {vResult.load.loadVA.toFixed(3)} = {vResult.load.pf.toFixed(2)}</div>
-                <div>R / X 來源：{vMM} mm² 參照表 R={vResult.baseR}、X={vResult.baseX}；條數 {vResult.wireCount} → 有效 R={vResult.R.toFixed(9)}、有效 X={vResult.X.toFixed(9)}</div>
-                <div>Z = R×PF + X×SIN(ACOS(PF)) = {vResult.Z.toFixed(9)} Ω/km</div>
-                <div>{vPhase === "1p2w" ? "VD = I×L×Z÷1000×2" : vPhase === "3p3w" ? "VD = √3×I×L×Z÷1000" : "VD = I×L×Z÷1000"} = {vResult.VD.toFixed(9)} V</div>
-                <div>VD% = VD ÷ {vResult.pctBaseV.toFixed(3)} × 100 = {vResult.pct.toFixed(4)}%</div>
+                <div>負載 VA = 燈KVA×1000 + 力HP×1000 + 熱kW×1000 = {vResult.load.kva}×1000 + {vResult.load.hp}×1000 + {vResult.load.kw}×1000 = {vResult.load.loadVA.toFixed(3)} VA</div>
+                <div>PF =〔燈KVA×1000×0.9 + 力HP×746 + 熱kW×1000〕÷ 負載VA = {vResult.load.pf.toFixed(2)}</div>
+                <div>Z = R×PF + X×SIN(ACOS(PF)) = {vResult.R.toFixed(9)}×{vResult.load.pf.toFixed(2)} + {vResult.X.toFixed(9)}×{vResult.sinTheta.toFixed(9)} = {vResult.Z.toFixed(9)} Ω/km</div>
+                <div>電壓降 VD = 電流I × 距離L × 總阻抗Z ÷ 1000 = {vResult.current.toFixed(1)} × {vResult.length || 0} × {vResult.Z.toFixed(9)} ÷ 1000 = {vResult.VD.toFixed(9)} V</div>
+                <div>壓降百分率 = 電壓降 ÷ 電壓 × 100 = {vResult.VD.toFixed(9)} ÷ {vVolt} × 100 = {vResult.pct.toFixed(4)}%</div>
               </div>
             </div>
           </div>
@@ -565,7 +534,7 @@ export default function Page() {
                 <strong>3. 負載：</strong>燈填 KVA、力填 HP、熱填 kW，系統依 Excel 計算書公式換算 VA、I、PF。<br />
                 <strong>4. 距離：</strong>填單程距離，單位公尺。<br />
                 <strong>5. 線徑與條數：</strong>線徑查電阻參照表；條數代表並聯組數，R、X 會除以條數後計算。<br />
-                <strong>6. 結果：</strong>表格欄位比照 Excel：說明、計算電壓、負載、電流、距離、線徑、功率因數、總阻抗、電壓降、壓降百分率。
+                <strong>6. 結果：</strong>以卡片方式呈現說明、計算電壓、負載、電流、距離、線徑、功率因數、R / X / Z、電壓降、壓降百分率；許可壓降統一採 3%。
               </div>
             </div>
           </div>
