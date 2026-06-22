@@ -85,9 +85,9 @@ export default function Page() {
   const [vVolt, setVVolt] = useState(220);
   // 依計算書模板：負載欄位拆為 KVA、HP、kW，用於計算 PF。
   // PF = (KVA×1000×0.9 + HP×746 + kW×1000) ÷ (KVA×1000 + HP×1000 + kW×1000)
-  const [vLoadKVA, setVLoadKVA] = useState(2);
-  const [vLoadHP, setVLoadHP] = useState(0);
-  const [vLoadKW, setVLoadKW] = useState(0);
+  const [vLoadKVA, setVLoadKVA] = useState("2");
+  const [vLoadHP, setVLoadHP] = useState("0");
+  const [vLoadKW, setVLoadKW] = useState("0");
   const [vCurrent, setVCurrent] = useState(9.45);
   const [vLength, setVLength] = useState(30);
   const [vPF, setVPF] = useState(0.9);
@@ -178,10 +178,20 @@ export default function Page() {
     return wireDB[wire]?.[mm] || {R: vR, X: vX};
   };
 
+  const toSafeNumber = (value: string) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+
+  const handleDecimalInput = (value: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    // 允許空白、小數點、小數一位；例如 0.5、1.5、155.5
+    if (/^\d*(\.\d{0,1})?$/.test(value)) setter(value);
+  };
+
   const calcLoad = () => {
-    const kva = Math.max(Number(vLoadKVA) || 0, 0);
-    const hp = Math.max(Number(vLoadHP) || 0, 0);
-    const kw = Math.max(Number(vLoadKW) || 0, 0);
+    const kva = toSafeNumber(vLoadKVA);
+    const hp = toSafeNumber(vLoadHP);
+    const kw = toSafeNumber(vLoadKW);
 
     // 對照計算書欄位：
     // C欄負載(VA) = N欄KVA×1000 + O欄HP×1000 + P欄kW×1000
@@ -347,17 +357,17 @@ export default function Page() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>一般負載 KVA</div>
-                      <input type="text" value={vLoadKVA} step="0.01" onChange={e => setVLoadKVA(e.target.value === "" ? 0 : Number(e.target.value))}
+                      <input type="text" inputMode="decimal" value={vLoadKVA} onChange={e => handleDecimalInput(e.target.value, setVLoadKVA)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>馬達 HP</div>
-                      <input type="text" value={vLoadHP} step="0.01" onChange={e => setVLoadKVA(e.target.value === "" ? 0 : Number(e.target.value))}
+                      <input type="text" inputMode="decimal" value={vLoadHP} onChange={e => handleDecimalInput(e.target.value, setVLoadHP)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>電熱 / 實功 kW</div>
-                      <input type="text" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(e.target.value === "" ? 0 : Number(e.target.value))}
+                      <input type="text" inputMode="decimal" value={vLoadKW} onChange={e => handleDecimalInput(e.target.value, setVLoadKW)}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                   </div>
@@ -368,7 +378,7 @@ export default function Page() {
 
                 <label>
                   <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
-                  <input type="text" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
+                  <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
                     style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                 </label>
 
