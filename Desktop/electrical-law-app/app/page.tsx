@@ -165,18 +165,31 @@ export default function Page() {
     setLoading(false);
   }, [input, loading, messages, docs]);
 
-  // 導線阻抗資料庫（依據計算書 PVC/FR/XLPE）
-  const wireDB: Record<string, Record<number, {R: number; X: number}>> = {
-    PVC: {2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.0733,X:0.0838}},
-    FR:  {2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.0733,X:0.0838}},
-    XLPE:{2:{R:5.657,X:0.119},3.5:{R:4.285,X:0.116},5.5:{R:3.24,X:0.115},8:{R:2.25,X:0.104},14:{R:1.26,X:0.0973},22:{R:0.809,X:0.0951},30:{R:0.606,X:0.094},38:{R:0.474,X:0.0914},50:{R:0.364,X:0.0897},60:{R:0.302,X:0.0887},80:{R:0.228,X:0.0877},100:{R:0.183,X:0.0868},150:{R:0.122,X:0.0856},200:{R:0.0916,X:0.0846},250:{R:0.03505,X:0.04375}},
+  // 導線阻抗資料庫（依據你提供的「電阻參照表」：R、X 單位為 Ω/km）
+  // 總阻抗公式：Z = R × PF + X × √(1 - PF²)
+  const wireDB: Record<number, { R: number; X: number }> = {
+    2: { R: 5.657, X: 0.119 },
+    5.5: { R: 3.24, X: 0.115 },
+    8: { R: 2.25, X: 0.104 },
+    14: { R: 1.26, X: 0.0973 },
+    22: { R: 0.801, X: 0.0965 },
+    30: { R: 0.606, X: 0.094 },
+    38: { R: 0.474, X: 0.0914 },
+    50: { R: 0.368, X: 0.0913 },
+    60: { R: 0.295, X: 0.0912 },
+    80: { R: 0.223, X: 0.091 },
+    100: { R: 0.175, X: 0.0909 },
+    125: { R: 0.14, X: 0.0895 },
+    150: { R: 0.115, X: 0.0887 },
+    200: { R: 0.0902, X: 0.0878 },
+    250: { R: 0.0701, X: 0.0875 },
   };
 
-  const wireMMList = [2,3.5,5.5,8,14,22,30,38,50,60,80,100,150,200,250];
+  const wireMMList = [2, 5.5, 8, 14, 22, 30, 38, 50, 60, 80, 100, 125, 150, 200, 250];
 
   const getWireRX = (wire: string, mm: number) => {
-    if(wire === "custom") return {R: vR, X: vX};
-    return wireDB[wire]?.[mm] || {R: vR, X: vX};
+    if (wire === "custom") return { R: vR, X: vX };
+    return wireDB[mm] || wireDB[2];
   };
 
   const toSafeNumber = (value: string) => {
@@ -244,9 +257,10 @@ export default function Page() {
   const updateWire = (wire: string, mm: number) => {
     setVWire(wire);
     setVMM(mm);
-    if(wire !== "custom") {
-      const d = wireDB[wire]?.[mm];
-      if(d) { setVR(d.R); setVX(d.X); }
+    if (wire !== "custom") {
+      const d = wireDB[mm] || wireDB[2];
+      setVR(d.R);
+      setVX(d.X);
     }
   };
 
@@ -772,7 +786,13 @@ export default function Page() {
                   <div key={label} style={{ gridColumn: label === "功率因數 cosθ" ? "1 / -1" : undefined }}>
                     <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px" }}>{label}</div>
                     <input type="number" value={val} step={step}
-                      onChange={(e) => setVLength(e.target.value)}
+                      onChange={e => {
+                        if (typeof val === "string") {
+                          (set as React.Dispatch<React.SetStateAction<string>>)(e.target.value);
+                        } else {
+                          (set as React.Dispatch<React.SetStateAction<number>>)(Number(e.target.value));
+                        }
+                      }}
                       style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "5px", color: "#CBD5E1", padding: "6px 8px", fontSize: "11px" }} />
                   </div>
                 ))}
@@ -806,7 +826,13 @@ export default function Page() {
                   <div key={label}>
                     <div style={{ fontSize: "10px", color: "#475569", marginBottom: "4px" }}>{label}</div>
                     <input type="number" value={val} step="0.0001" readOnly={vWire !== "custom"}
-                      onChange={e => set(Number(e.target.value))}
+                      onChange={e => {
+                        if (typeof val === "string") {
+                          (set as React.Dispatch<React.SetStateAction<string>>)(e.target.value);
+                        } else {
+                          (set as React.Dispatch<React.SetStateAction<number>>)(Number(e.target.value));
+                        }
+                      }}
                       style={{ width: "100%", background: vWire !== "custom" ? "#0a1420" : "#111f2e", border: "1px solid #1E3A5F", borderRadius: "5px", color: vWire !== "custom" ? "#475569" : "#CBD5E1", padding: "6px 8px", fontSize: "11px" }} />
                   </div>
                 ))}
