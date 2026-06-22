@@ -347,17 +347,17 @@ export default function Page() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>一般負載 KVA</div>
-                      <input type="number" value={vLoadKVA} step="0.01" onChange={e => setVLoadKVA(Number(e.target.value))}
+                      <input type="text" value={vLoadKVA} step="0.01" onChange={e => setVLoadKVA(e.target.value === "" ? 0 : Number(e.target.value))}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>馬達 HP</div>
-                      <input type="number" value={vLoadHP} step="0.01" onChange={e => setVLoadHP(Number(e.target.value))}
+                      <input type="text" value={vLoadHP} step="0.01" onChange={e => setVLoadKVA(e.target.value === "" ? 0 : Number(e.target.value))}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                     <label>
                       <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>電熱 / 實功 kW</div>
-                      <input type="number" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(Number(e.target.value))}
+                      <input type="text" value={vLoadKW} step="0.01" onChange={e => setVLoadKW(Number(e.target.value))}
                         style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                     </label>
                   </div>
@@ -368,7 +368,7 @@ export default function Page() {
 
                 <label>
                   <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "6px" }}>距離 m</div>
-                  <input type="number" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
+                  <input type="text" value={vLength} step="1" onChange={e => setVLength(Number(e.target.value))}
                     style={{ width: "100%", background: "#111f2e", border: "1px solid #1E3A5F", borderRadius: "8px", color: "#CBD5E1", padding: "10px", fontSize: "13px" }} />
                 </label>
 
